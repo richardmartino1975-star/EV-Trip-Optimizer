@@ -1,0 +1,30 @@
+# Copy this to apps.yaml (or merge into your existing one) and fill in
+# your own values. Anything under "Optional" can be omitted entirely if
+# the default suits you.
+
+ev_trip_optimizer:
+  module: ev_trip_optimizer
+  class: EVTripOptimizer
+
+  # --- Required ---
+  google_api_key: "YOUR_GOOGLE_ROUTES_API_KEY"     # Google Cloud project with Routes API enabled
+  home_lat: -33.8688                                # your home latitude
+  home_lng: 151.2093                                # your home longitude
+  calendars:
+    - calendar.primary                              # any calendar.* entities with location-tagged events
+    - calendar.family
+  soc_sensor: sensor.my_ev_charge_level              # any sensor reporting 0-100
+  price_forecast_sensor: sensor.my_price_forecast    # any sensor with a 'forecasts' attribute:
+                                                      #   [{start_time, end_time, per_kwh}, ...]
+
+  # --- Optional (defaults shown) ---
+  min_soc: 30.0                  # floor — never plan to arrive home below this
+  baseline_target_soc: 80.0      # day-to-day ceiling when no trip needs more
+  battery_capacity_kwh: 75.0
+  efficiency_km_per_kwh: 6.5
+  charge_rate_kw: 25.0
+  horizon_hours: 72              # how far ahead to look across your calendars
+
+  target_soc_helper: input_number.ev_charge_target_soc   # must exist — create via Settings > Helpers
+  override_helper: input_boolean.ev_charge_override       # must exist — create via Settings > Helpers
+  status_sensor: sensor.ev_trip_optimizer                 # created automatically by the app

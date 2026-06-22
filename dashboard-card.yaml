@@ -1,0 +1,117 @@
+type: custom:html-template-card
+title: false
+ignore_line_breaks: true
+content: >
+  {% set attr = state_attr('sensor.ev_trip_optimizer', 'trips') %} {% set status
+  = states('sensor.ev_trip_optimizer') %} {% set current_soc =
+  state_attr('sensor.ev_trip_optimizer', 'current_soc') %} {% set charge_needed
+  = state_attr('sensor.ev_trip_optimizer', 'charge_needed') %} {% set
+  charge_window = state_attr('sensor.ev_trip_optimizer', 'charge_window_start')
+  %} {% set charge_price = state_attr('sensor.ev_trip_optimizer',
+  'charge_window_price') %} {% set kwh = state_attr('sensor.ev_trip_optimizer',
+  'kwh_to_charge') %} {% set duration = state_attr('sensor.ev_trip_optimizer',
+  'charge_duration_hrs') %} {% set updated =
+  state_attr('sensor.ev_trip_optimizer', 'last_updated') %} {% set min_soc =
+  state_attr('sensor.ev_trip_optimizer', 'min_soc') %} {% set target_soc =
+  state_attr('sensor.ev_trip_optimizer', 'target_soc') %} {% set trips = attr if
+  attr else [] %} {% set last_trip = trips[-1] if trips | length > 0 else none
+  %} {% set final_soc = last_trip.soc_after if (last_trip is not none and
+  'soc_after' in last_trip) else current_soc %} {% set final_color = '#e74c3c'
+  if final_soc <= min_soc else '#e67e22' if final_soc <= (min_soc + 10) else
+  '#2ecc71' %} {% set status_bg = 'rgba(230,126,34,0.15)' if charge_needed else
+  'rgba(46,204,113,0.15)' %} {% set status_color = '#e67e22' if charge_needed
+  else '#2ecc71' %}
+
+  <div style="padding:14px 16px;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <ha-icon icon="mdi:car-electric" style="--mdi-icon-size:20px;color:var(--secondary-text-color);"></ha-icon>
+        <span style="font-size:15px;font-weight:500;color:var(--primary-text-color);">EV trip optimizer</span>
+      </div>
+      <span style="font-size:12px;padding:3px 10px;border-radius:6px;background:{{ status_bg }};color:{{ status_color }};">{{ status }}</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px;">
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:11px;color:var(--secondary-text-color);margin-bottom:4px;">Current SoC</div>
+        <div style="font-size:22px;font-weight:500;color:var(--primary-text-color);">{{ current_soc | round(1) }}%</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:11px;color:var(--secondary-text-color);margin-bottom:4px;">After all trips</div>
+        <div style="font-size:22px;font-weight:500;color:{{ final_color }};">{{ final_soc | round(1) }}%</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:11px;color:var(--secondary-text-color);margin-bottom:4px;">Floor / target</div>
+        <div style="font-size:17px;font-weight:500;color:var(--primary-text-color);white-space:nowrap;">{{ min_soc | int }} / {{ target_soc | int }}%</div>
+      </div>
+    </div>
+
+    {% if charge_needed %}
+    <div style="background:rgba(230,126,34,0.1);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
+      <div>
+        <div style="font-size:10px;color:#e67e22;margin-bottom:2px;">Charge needed</div>
+        <div style="font-size:15px;font-weight:500;color:#e67e22;">{{ kwh }} kWh</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#e67e22;margin-bottom:2px;">Duration</div>
+        <div style="font-size:15px;font-weight:500;color:#e67e22;">{{ duration }} hrs</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#e67e22;margin-bottom:2px;">Best window</div>
+        <div style="font-size:15px;font-weight:500;color:#e67e22;">{{ charge_window or '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#e67e22;margin-bottom:2px;">Price</div>
+        <div style="font-size:15px;font-weight:500;color:#e67e22;">{{ charge_price }}c/kWh</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div style="font-size:11px;font-weight:500;color:var(--secondary-text-color);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Upcoming trips</div>
+
+    {% if trips | length == 0 %}
+    <div style="font-size:13px;color:var(--secondary-text-color);padding:8px 0;">No upcoming trips with locations in the next 72 hours</div>
+    {% else %}
+    {% for t in trips %}
+    {% set breach = t.breach if 'breach' in t else false %}
+    {% set has_soc_after = 'soc_after' in t %}
+    {% set soc_after_val = t.soc_after if has_soc_after else none %}
+    {% set row_bg = 'rgba(231,76,60,0.1)' if breach else 'rgba(255,255,255,0.04)' %}
+    {% set text_color = '#e74c3c' if breach else 'var(--primary-text-color)' %}
+    {% set after_color = '#e74c3c' if breach else '#e67e22' if (has_soc_after and soc_after_val <= (min_soc + 5)) else '#2ecc71' %}
+    {% set loc_short = t.location.split(',')[0] %}
+    {% set time_parts = t.depart.split(' ') %}
+    {% set time_part = time_parts[3] if time_parts | length > 3 else t.depart %}
+    {% set date_part = time_parts[0] + ' ' + time_parts[1] + ' ' + time_parts[2] if time_parts | length > 3 else '' %}
+    <div style="display:grid;grid-template-columns:70px minmax(0,1fr) 58px 58px 58px;gap:6px;align-items:center;padding:8px 10px;background:{{ row_bg }};border-radius:8px;margin-bottom:5px;">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:{{ text_color }};">{{ time_part }}</div>
+        <div style="font-size:10px;color:var(--secondary-text-color);">{{ date_part }}</div>
+      </div>
+      <div style="min-width:0;">
+        <div style="font-size:13px;font-weight:500;color:{{ text_color }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.summary }}</div>
+        <div style="font-size:11px;color:var(--secondary-text-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ loc_short }}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:var(--secondary-text-color);">dist</div>
+        <div style="font-size:13px;font-weight:500;color:{{ text_color }};">{{ t.distance_km }} km</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:var(--secondary-text-color);">before</div>
+        <div style="font-size:13px;font-weight:500;color:{{ text_color }};">{{ t.soc_before }}%</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:var(--secondary-text-color);">after</div>
+        <div style="font-size:13px;font-weight:500;color:{{ after_color }};">{{ soc_after_val | round(1) if has_soc_after else '—' }}%</div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div style="margin-top:10px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;">
+      <span style="font-size:11px;color:var(--secondary-text-color);">Updated {{ updated }}</span>
+      <span style="font-size:11px;color:var(--secondary-text-color);">72hr horizon · runs hourly</span>
+    </div>
+
+  </div>
